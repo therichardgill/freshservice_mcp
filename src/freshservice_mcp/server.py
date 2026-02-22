@@ -3232,6 +3232,731 @@ async def publish_solution_article(article_id: int) -> Dict[str, Any]:
                 "error": f"Unexpected error occurred: {str(e)}"
             }
 
+# ========== PROJECT MANAGEMENT TOOLS ==========
+
+# LIST PROJECTS
+@mcp.tool()
+async def list_projects(page: Optional[int] = 1, per_page: Optional[int] = 30) -> Dict[str, Any]:
+    """List all projects in Freshservice with pagination support."""
+    
+    if page < 1:
+        return {"error": "Page number must be greater than 0"}
+    
+    if per_page < 1 or per_page > 100:
+        return {"error": "Page size must be between 1 and 100"}
+
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects"
+    
+    params = {
+        "page": page,
+        "per_page": per_page
+    }
+    
+    headers = get_auth_headers()
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            link_header = response.headers.get('Link', '')
+            pagination_info = parse_link_header(link_header)
+            
+            projects = response.json()
+            
+            return {
+                "projects": projects,
+                "pagination": {
+                    "current_page": page,
+                    "next_page": pagination_info.get("next"),
+                    "prev_page": pagination_info.get("prev"),
+                    "per_page": per_page
+                }
+            }
+            
+        except httpx.HTTPStatusError as e:
+            return {"error": f"Failed to fetch projects: {str(e)}"}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
+
+
+# GET PROJECT
+@mcp.tool()
+async def get_project(project_id: int) -> Dict[str, Any]:
+    """Get a specific project by ID from Freshservice."""
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects/{project_id}"
+    headers = get_auth_headers()
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to fetch project: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# CREATE PROJECT
+@mcp.tool()
+async def create_project(
+    name: str,
+    description: Optional[str] = None,
+    project_type: Optional[int] = None,
+    priority: Optional[int] = None,
+    status: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    manager_id: Optional[int] = None,
+    custom_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Create a new project in Freshservice."""
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects"
+    headers = get_auth_headers()
+    
+    payload = {
+        "name": name
+    }
+    
+    if description:
+        payload["description"] = description
+    if project_type is not None:
+        payload["project_type"] = project_type
+    if priority is not None:
+        payload["priority"] = priority
+    if status is not None:
+        payload["status"] = status
+    if start_date:
+        payload["start_date"] = start_date
+    if end_date:
+        payload["end_date"] = end_date
+    if manager_id:
+        payload["manager_id"] = manager_id
+    if custom_fields:
+        payload["custom_fields"] = custom_fields
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to create project: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# UPDATE PROJECT
+@mcp.tool()
+async def update_project(
+    project_id: int,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    project_type: Optional[int] = None,
+    priority: Optional[int] = None,
+    status: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    manager_id: Optional[int] = None,
+    custom_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Update an existing project in Freshservice."""
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects/{project_id}"
+    headers = get_auth_headers()
+    
+    payload = {}
+    
+    if name:
+        payload["name"] = name
+    if description:
+        payload["description"] = description
+    if project_type is not None:
+        payload["project_type"] = project_type
+    if priority is not None:
+        payload["priority"] = priority
+    if status is not None:
+        payload["status"] = status
+    if start_date:
+        payload["start_date"] = start_date
+    if end_date:
+        payload["end_date"] = end_date
+    if manager_id:
+        payload["manager_id"] = manager_id
+    if custom_fields:
+        payload["custom_fields"] = custom_fields
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.put(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to update project: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# LIST PROJECT TASKS
+@mcp.tool()
+async def list_project_tasks(
+    project_id: int,
+    page: Optional[int] = 1,
+    per_page: Optional[int] = 30
+) -> Dict[str, Any]:
+    """List all tasks for a specific project in Freshservice."""
+    
+    if page < 1:
+        return {"error": "Page number must be greater than 0"}
+    
+    if per_page < 1 or per_page > 100:
+        return {"error": "Page size must be between 1 and 100"}
+
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects/{project_id}/tasks"
+    
+    params = {
+        "page": page,
+        "per_page": per_page
+    }
+    
+    headers = get_auth_headers()
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            link_header = response.headers.get('Link', '')
+            pagination_info = parse_link_header(link_header)
+            
+            tasks = response.json()
+            
+            return {
+                "tasks": tasks,
+                "pagination": {
+                    "current_page": page,
+                    "next_page": pagination_info.get("next"),
+                    "prev_page": pagination_info.get("prev"),
+                    "per_page": per_page
+                }
+            }
+            
+        except httpx.HTTPStatusError as e:
+            return {"error": f"Failed to fetch project tasks: {str(e)}"}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
+
+
+# CREATE PROJECT TASK
+@mcp.tool()
+async def create_project_task(
+    project_id: int,
+    title: str,
+    description: Optional[str] = None,
+    status: Optional[int] = None,
+    priority: Optional[int] = None,
+    start_date: Optional[str] = None,
+    due_date: Optional[str] = None,
+    assigned_to: Optional[int] = None,
+    custom_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Create a new task in a Freshservice project."""
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects/{project_id}/tasks"
+    headers = get_auth_headers()
+    
+    payload = {
+        "title": title
+    }
+    
+    if description:
+        payload["description"] = description
+    if status is not None:
+        payload["status"] = status
+    if priority is not None:
+        payload["priority"] = priority
+    if start_date:
+        payload["start_date"] = start_date
+    if due_date:
+        payload["due_date"] = due_date
+    if assigned_to:
+        payload["assigned_to"] = assigned_to
+    if custom_fields:
+        payload["custom_fields"] = custom_fields
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to create project task: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# UPDATE PROJECT TASK
+@mcp.tool()
+async def update_project_task(
+    project_id: int,
+    task_id: int,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    status: Optional[int] = None,
+    priority: Optional[int] = None,
+    start_date: Optional[str] = None,
+    due_date: Optional[str] = None,
+    assigned_to: Optional[int] = None,
+    custom_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Update an existing task in a Freshservice project."""
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/pm/projects/{project_id}/tasks/{task_id}"
+    headers = get_auth_headers()
+    
+    payload = {}
+    
+    if title:
+        payload["title"] = title
+    if description:
+        payload["description"] = description
+    if status is not None:
+        payload["status"] = status
+    if priority is not None:
+        payload["priority"] = priority
+    if start_date:
+        payload["start_date"] = start_date
+    if due_date:
+        payload["due_date"] = due_date
+    if assigned_to:
+        payload["assigned_to"] = assigned_to
+    if custom_fields:
+        payload["custom_fields"] = custom_fields
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.put(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to update project task: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# ========== ASSET MANAGEMENT TOOLS ==========
+
+# LIST ASSETS
+@mcp.tool()
+async def list_assets(
+    page: Optional[int] = 1,
+    per_page: Optional[int] = 30,
+    include: Optional[str] = None
+) -> Dict[str, Any]:
+    """List all assets in Freshservice with pagination support.
+    
+    Args:
+        page: Page number for pagination (default: 1)
+        per_page: Number of results per page (default: 30, max: 100)
+        include: Comma-separated list of associations to include (e.g., 'type_fields')
+    """
+    
+    if page < 1:
+        return {"error": "Page number must be greater than 0"}
+    
+    if per_page < 1 or per_page > 100:
+        return {"error": "Page size must be between 1 and 100"}
+
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/assets"
+    
+    params = {
+        "page": page,
+        "per_page": per_page
+    }
+    
+    if include:
+        params["include"] = include
+    
+    headers = get_auth_headers()
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            link_header = response.headers.get('Link', '')
+            pagination_info = parse_link_header(link_header)
+            
+            assets = response.json()
+            
+            return {
+                "assets": assets,
+                "pagination": {
+                    "current_page": page,
+                    "next_page": pagination_info.get("next"),
+                    "prev_page": pagination_info.get("prev"),
+                    "per_page": per_page
+                }
+            }
+            
+        except httpx.HTTPStatusError as e:
+            return {"error": f"Failed to fetch assets: {str(e)}"}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
+
+
+# GET ASSET
+@mcp.tool()
+async def get_asset(asset_id: int, include: Optional[str] = None) -> Dict[str, Any]:
+    """Get a specific asset by ID from Freshservice.
+    
+    Args:
+        asset_id: The asset ID
+        include: Comma-separated list of associations to include (e.g., 'type_fields')
+    """
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/assets/{asset_id}"
+    
+    params = {}
+    if include:
+        params["include"] = include
+    
+    headers = get_auth_headers()
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to fetch asset: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# CREATE ASSET
+@mcp.tool()
+async def create_asset(
+    name: str,
+    asset_type_id: int,
+    asset_tag: Optional[str] = None,
+    description: Optional[str] = None,
+    impact: Optional[int] = None,
+    usage_type: Optional[int] = None,
+    user_id: Optional[int] = None,
+    location_id: Optional[int] = None,
+    department_id: Optional[int] = None,
+    agent_id: Optional[int] = None,
+    group_id: Optional[int] = None,
+    assigned_on: Optional[str] = None,
+    type_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Create a new asset in Freshservice.
+    
+    Args:
+        name: Name of the asset
+        asset_type_id: ID of the asset type
+        asset_tag: Asset tag/identifier
+        description: Description of the asset
+        impact: Impact of the asset (1=Low, 2=Medium, 3=High)
+        usage_type: Usage type (1=Loaner, 2=Permanent)
+        user_id: ID of the user to whom the asset is assigned
+        location_id: ID of the location
+        department_id: ID of the department
+        agent_id: ID of the agent managing the asset
+        group_id: ID of the agent group managing the asset
+        assigned_on: Date when the asset was assigned (ISO 8601 format)
+        type_fields: Asset type specific fields as key-value pairs
+    """
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/assets"
+    headers = get_auth_headers()
+    
+    payload = {
+        "name": name,
+        "asset_type_id": asset_type_id
+    }
+    
+    if asset_tag:
+        payload["asset_tag"] = asset_tag
+    if description:
+        payload["description"] = description
+    if impact is not None:
+        payload["impact"] = impact
+    if usage_type is not None:
+        payload["usage_type"] = usage_type
+    if user_id:
+        payload["user_id"] = user_id
+    if location_id:
+        payload["location_id"] = location_id
+    if department_id:
+        payload["department_id"] = department_id
+    if agent_id:
+        payload["agent_id"] = agent_id
+    if group_id:
+        payload["group_id"] = group_id
+    if assigned_on:
+        payload["assigned_on"] = assigned_on
+    if type_fields:
+        payload["type_fields"] = type_fields
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to create asset: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# UPDATE ASSET
+@mcp.tool()
+async def update_asset(
+    asset_id: int,
+    name: Optional[str] = None,
+    asset_tag: Optional[str] = None,
+    description: Optional[str] = None,
+    impact: Optional[int] = None,
+    usage_type: Optional[int] = None,
+    asset_state: Optional[int] = None,
+    user_id: Optional[int] = None,
+    location_id: Optional[int] = None,
+    department_id: Optional[int] = None,
+    agent_id: Optional[int] = None,
+    group_id: Optional[int] = None,
+    assigned_on: Optional[str] = None,
+    type_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """Update an existing asset in Freshservice.
+    
+    Args:
+        asset_id: ID of the asset to update
+        name: Name of the asset
+        asset_tag: Asset tag/identifier
+        description: Description of the asset
+        impact: Impact of the asset (1=Low, 2=Medium, 3=High)
+        usage_type: Usage type (1=Loaner, 2=Permanent)
+        asset_state: State of the asset (e.g., 1=In Use, 2=In Stock, 3=Retired)
+        user_id: ID of the user to whom the asset is assigned
+        location_id: ID of the location
+        department_id: ID of the department
+        agent_id: ID of the agent managing the asset
+        group_id: ID of the agent group managing the asset
+        assigned_on: Date when the asset was assigned (ISO 8601 format)
+        type_fields: Asset type specific fields as key-value pairs
+    """
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/assets/{asset_id}"
+    headers = get_auth_headers()
+    
+    payload = {}
+    
+    if name:
+        payload["name"] = name
+    if asset_tag:
+        payload["asset_tag"] = asset_tag
+    if description:
+        payload["description"] = description
+    if impact is not None:
+        payload["impact"] = impact
+    if usage_type is not None:
+        payload["usage_type"] = usage_type
+    if asset_state is not None:
+        payload["asset_state"] = asset_state
+    if user_id is not None:  # Allow setting to null
+        payload["user_id"] = user_id
+    if location_id:
+        payload["location_id"] = location_id
+    if department_id:
+        payload["department_id"] = department_id
+    if agent_id:
+        payload["agent_id"] = agent_id
+    if group_id:
+        payload["group_id"] = group_id
+    if assigned_on:
+        payload["assigned_on"] = assigned_on
+    if type_fields:
+        payload["type_fields"] = type_fields
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.put(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to update asset: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# DELETE ASSET
+@mcp.tool()
+async def delete_asset(asset_id: int) -> Dict[str, Any]:
+    """Delete an asset from Freshservice (moves to trash).
+    
+    Args:
+        asset_id: ID of the asset to delete
+    """
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/assets/{asset_id}"
+    headers = get_auth_headers()
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.delete(url, headers=headers)
+            response.raise_for_status()
+            return {"success": True, "message": f"Asset {asset_id} deleted successfully"}
+        except httpx.HTTPStatusError as e:
+            error_text = None
+            try:
+                error_text = e.response.json() if e.response else None
+            except Exception:
+                error_text = e.response.text if e.response else None
+            
+            return {
+                "error": f"Failed to delete asset: {str(e)}",
+                "status_code": e.response.status_code if e.response else None,
+                "details": error_text
+            }
+        except Exception as e:
+            return {"error": f"Unexpected error occurred: {str(e)}"}
+
+
+# FILTER ASSETS
+@mcp.tool()
+async def filter_assets(
+    query: str,
+    page: Optional[int] = 1,
+    per_page: Optional[int] = 30
+) -> Dict[str, Any]:
+    """Filter assets using Freshservice query language.
+    
+    Args:
+        query: Filter query (e.g., "asset_state:2 AND asset_type_id:1")
+        page: Page number for pagination (default: 1)
+        per_page: Number of results per page (default: 30, max: 100)
+    
+    Examples:
+        - "asset_state:2" (In Stock)
+        - "name:'*laptop*'"
+        - "user_id:77000321966"
+        - "asset_type_id:1 AND impact:3"
+    """
+    
+    if page < 1:
+        return {"error": "Page number must be greater than 0"}
+    
+    if per_page < 1 or per_page > 100:
+        return {"error": "Page size must be between 1 and 100"}
+
+    url = f"https://{FRESHSERVICE_DOMAIN}/api/v2/assets/filter"
+    
+    params = {
+        "query": query,
+        "page": page,
+        "per_page": per_page
+    }
+    
+    headers = get_auth_headers()
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            
+            assets = response.json()
+            
+            return {
+                "assets": assets,
+                "query": query,
+                "pagination": {
+                    "current_page": page,
+                    "per_page": per_page
+                }
+            }
+            
+        except httpx.HTTPStatusError as e:
+            return {"error": f"Failed to filter assets: {str(e)}"}
+        except Exception as e:
+            return {"error": f"An unexpected error occurred: {str(e)}"}
+
+
 # GET AUTH HEADERS
 def get_auth_headers():
     return {

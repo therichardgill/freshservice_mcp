@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "freshservice-mcp-test": {
+      "command": "/Users/brick/.openclaw/workspace-work/freshservice-mcp-extended/.venv/bin/freshservice-mcp",
+      "env": {
+        "FRESHSERVICE_DOMAIN": "helpdesk.sanahealthgroup.com",
+        "FRESHSERVICE_APIKEY": "LBREgyjQ5twU5TQGviF8"
+      }
+    }
+  },
+  "imports": []
+}
